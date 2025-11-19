@@ -50,13 +50,18 @@ app.get('/ozon', async (req, res) => {
 
     // Поиск цены
     let price = '';
-    let match = html.match(/<span[^>]*?(tsHeadline600Large|tsHeadline500Medium)[^>]*>([\d\s ]+)&thinsp;₽<\/span>/i);
-    if (match && match[2]) {
-      price = match[2].replace(/[^\d]/g, '');
-    } else {
-      let m2 = html.match(/<span[^>]*>[\s]*(\d[\d\s ]*)&thinsp;₽<\/span>/i);
-      if (m2 && m2[1]) price = m2[1].replace(/[^\d]/g, '');
-    }
+let match = html.match(/<span[^>]*class="pdp_f7b[^"]*tsHeadline500Medium[^"]*"[^>]*>([\d\s&thinsp;]+)₽<\/span>/i);
+if (match && match[1]) {
+  price = match[1].replace(/[^\d]/g, '');
+} else {
+  let m2 = html.match(/<span[^>]*class="tsHeadline600Large"[^>]*>([\d\s&thinsp;]+)₽<\/span>/i);
+  if (m2 && m2[1]) price = m2[1].replace(/[^\d]/g, '');
+  else {
+    let m3 = html.match(/<span[^>]*>([\d\s&thinsp;]+)₽<\/span>/i);
+    if (m3 && m3[1]) price = m3[1].replace(/[^\d]/g, '');
+  }
+}
+
 
     let stock = (
       html.includes('"isAvailableForBuy":true') ||
@@ -83,3 +88,4 @@ app.get('/ozon', async (req, res) => {
 
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => console.log('Server started on', PORT));
+
