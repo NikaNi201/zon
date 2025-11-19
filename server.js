@@ -10,41 +10,42 @@ app.get('/ozon', async (req, res) => {
   try {
     // Запуск браузера с флагами обхода детекции
     browser = await chromium.launch({
-      headless: true,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-blink-features=AutomationControlled',
-        '--disable-dev-shm-usage',
-        '--disable-web-security'
-      ]
-    });
+  headless: true,
+  args: [
+    '--no-sandbox',
+    '--disable-setuid-sandbox',
+    '--disable-blink-features=AutomationControlled',
+    '--disable-dev-shm-usage',
+    '--disable-web-security',
+    '--start-maximized'
+  ]
+});
+
 
     // Создание контекста с реалистичными параметрами
     const context = await browser.newContext({
-      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      viewport: { width: 1920, height: 1080 },
-      locale: 'ru-RU',
-      timezoneId: 'Europe/Moscow',
-      permissions: []
-    });
+  userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  viewport: { width: 1280, height: 800 },
+  locale: 'ru-RU',
+  timezoneId: 'Europe/Moscow',
+  colorScheme: 'light'
+});
+const page = await context.newPage();
 
-    const page = await context.newPage();
-
-    // Удаляем признаки автоматизации
-    await page.addInitScript(() => {
-      Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
-      window.chrome = { runtime: {} };
-    });
+// Удаление webdriver и эмуляция chrome.runtime
+await page.addInitScript(() => {
+  Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+  window.chrome = { runtime: {} };
+});
 
     // Переход на страницу товара
     await page.goto(`https://www.ozon.ru/product/${sku}/`, {
-      waitUntil: 'domcontentloaded',
-      timeout: 60000
-    });
+  waitUntil: 'domcontentloaded',
+  timeout: 120000
+});
 
-    // Ждём загрузки основного контента (3 секунды)
-    await page.waitForTimeout(3000);
+await page.waitForTimeout(5000); // больше времени на прогрузку
+
 
     const html = await page.content();
 
@@ -85,4 +86,5 @@ const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
   console.log(`Server started on port ${PORT}`);
 });
+
 
