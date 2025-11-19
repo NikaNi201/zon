@@ -74,7 +74,7 @@ await page.waitForTimeout(5000); // больше времени на прогр�
     res.json({ status: 'ok', sku, price, in_stock, message: status });
   } catch (e) {
     if (browser) await browser.close();
-    res.json({ status: 'ok', sku, price, in_stock, message: status, debug: html.slice(0, 1000) });
+    res.json({ status: 'ok', sku, price, in_stock, message: status, debug: html.slice(0,1000) });
   }
 });
 
@@ -86,5 +86,6 @@ const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
   console.log(`Server started on port ${PORT}`);
 });
+
 
 
