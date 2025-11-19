@@ -25,7 +25,7 @@ app.get('/ozon', async (req, res) => {
     await page.setViewport({ width: 1280, height: 800 });
 
     // "Человеческие" движение и заход на главную
-    await page.goto('https://www.ozon.ru/', { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await page.goto('https://www.ozon.ru/', { waitUntil: 'domcontentloaded', timeout: 160000 });
     await page.mouse.move(600, 400);
     await page.mouse.move(800, 500);
 
@@ -60,3 +60,4 @@ app.get('/', (req, res) => {
 
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => console.log('Server started on', PORT));
+
