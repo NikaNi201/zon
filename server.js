@@ -1,10 +1,10 @@
 const express = require('express');
 const axios = require('axios');
-const cors = require('cors'); // ← Добавь этот модуль
+const cors = require('cors');
 
 const app = express();
 app.use(express.json());
-app.use(cors()); // ← Разрешить все запросы (или укажи конкретный домен)
+app.use(cors());
 
 const SCRAPINGBEE_API_KEY = 'NY6WX1EBVRHDETAFGI763MC6W8JSFZEO0JSEDMWPJDZAS6YL3DBZRJME7Q25TJK25F77C0A5ZBNSJQR3';
 
@@ -80,3 +80,6 @@ app.get('/ozon', async (req, res) => {
     });
   }
 });
+
+const PORT = process.env.PORT || 10000;
+app.listen(PORT, () => console.log('Server started on', PORT));
