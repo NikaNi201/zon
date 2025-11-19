@@ -1,56 +1,54 @@
 const express = require('express');
-const puppeteer = require('puppeteer-extra');
-const StealthPlugin = require('puppeteer-extra-plugin-stealth');
-puppeteer.use(StealthPlugin());
+const axios = require('axios'); // нужен для http-запроса к ScrapingBee
 
 const app = express();
+
+const SCRAPINGBEE_API_KEY = 'NY6WX1EBVRHDETAFGI763MC6W8JSFZEO0JSEDMWPJDZAS6YL3DBZRJME7Q25TJK25F77C0A5ZBNSJQR3'; // ← вставь свой ключ
 
 app.get('/ozon', async (req, res) => {
   const sku = (req.query.sku || '').replace(/[^\d]/g, '');
   if (!sku) return res.status(400).json({ status: 'error', error: 'Нет SKU' });
 
-  let browser;
+  // Собираем URL карточки Ozon
+  const ozonUrl = `https://www.ozon.ru/product/${sku}/`;
+
   try {
-    browser = await puppeteer.launch({
-      headless: true,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--lang=ru-RU,ru',
-        '--window-size=1280,800'
-      ]
+    const beeResp = await axios.get('https://app.scrapingbee.com/api/v1/', {
+      params: {
+        api_key: SCRAPINGBEE_API_KEY,
+        url: ozonUrl,
+        render_js: 'true',
+        premium_proxy: 'true', // если твой тариф поддерживает
+        country_code: 'ru'     // максимально "нативно" для Ozon
+      }
     });
-    const [page] = await browser.pages();
-    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
-    await page.setViewport({ width: 1280, height: 800 });
 
-    // "Человеческие" движение и заход на главную
-    await page.goto('https://www.ozon.ru/', { waitUntil: 'domcontentloaded', timeout: 160000 });
-    await page.mouse.move(600, 400);
-    await page.mouse.move(800, 500);
+    const html = beeResp.data;
 
-    // На карточку
-    await page.goto(`https://www.ozon.ru/product/${sku}/`, { waitUntil: 'domcontentloaded', timeout: 80000 });
-    await page.waitForTimeout(4000);
+    // Теперь парсим цену из html
+    let price = '';
+    let match = html.match(/<span[^>]*?(tsHeadline600Large|tsHeadline500Medium)[^>]*>([\d\s ]+)&thinsp;₽<\/span>/i);
+    if (match && match[2]) {
+      price = match[2].replace(/[^\d]/g, '');
+    } else {
+      let m2 = html.match(/<span[^>]*>[\s]*(\d[\d\s ]*)&thinsp;₽<\/span>/i);
+      if (m2 && m2[1]) price = m2[1].replace(/[^\d]/g, '');
+    }
 
-    const html = await page.content();
-    const priceMatch = html.match(/<span[^>]*?(tsHeadline600Large|tsHeadline500Medium)[^>]*>([\d\s ]+)&thinsp;₽<\/span>/i);
-    const price = priceMatch && priceMatch[2] ? priceMatch[2].replace(/[^\d]/g, '') : '';
-    let antibot = html.includes('Antibot Challenge Page') || html.includes('включите JavaScript');
-    let status = antibot ? 'antibot' : 'ok';
-
-    await browser.close();
+    let stock = (
+      html.includes('"isAvailableForBuy":true') ||
+      html.includes('В корзину') || html.includes('Добавить в корзину')
+    ) ? 'да' : 'нет';
 
     res.json({
-      status,
+      status: price ? 'ok' : 'empty',
       sku,
       price,
-      antibot,
-      debug: antibot ? html.slice(0, 700) : undefined
+      in_stock: stock,
+      debug: price ? undefined : html.slice(0, 900)
     });
-  } catch (e) {
-    if (browser) await browser.close();
-    res.status(500).json({ status: 'error', error: '' + e });
+  } catch (error) {
+    res.status(500).json({ status: 'error', error: error.toString() });
   }
 });
 
@@ -60,4 +58,3 @@ app.get('/', (req, res) => {
 
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => console.log('Server started on', PORT));
-
