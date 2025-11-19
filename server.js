@@ -1,8 +1,10 @@
 const express = require('express');
 const axios = require('axios');
+const cors = require('cors'); // ← Добавь этот модуль
 
 const app = express();
 app.use(express.json());
+app.use(cors()); // ← Разрешить все запросы (или укажи конкретный домен)
 
 const SCRAPINGBEE_API_KEY = 'NY6WX1EBVRHDETAFGI763MC6W8JSFZEO0JSEDMWPJDZAS6YL3DBZRJME7Q25TJK25F77C0A5ZBNSJQR3';
 
@@ -26,24 +28,23 @@ app.get('/ozon', async (req, res) => {
     const html = beeResp.data;
 
     // Проверка на капчу
-    const isCaptcha = html.includes('captcha') || html.includes('робот') || html.includes('robot') || html.includes('Challenge');
+    const isCaptcha = html.includes('captcha') || 
+                      html.includes('робот') || 
+                      html.includes('robot') || 
+                      html.includes('Challenge') ||
+                      html.includes('Antibot');
     
     if (isCaptcha) {
       // Ищем base64 картинку капчи
       const captchaMatch = html.match(/data:image\/[^;]+;base64,[^"']+/);
       const captchaImage = captchaMatch ? captchaMatch[0] : null;
 
-      // Ищем текстовую капчу (если есть)
-      const captchaTextMatch = html.match(/class="captcha-[^"]*"[^>]*>([^<]+)</i);
-      const captchaText = captchaTextMatch ? captchaTextMatch[1] : null;
-
       return res.json({
         status: 'captcha_required',
         sku,
         captcha_image: captchaImage,
-        captcha_text: captchaText,
-        message: 'Ozon требует решить капчу',
-        debug: html.slice(0, 600)
+        message: 'Ozon требует решить капчу/JS-challenge',
+        debug: html.slice(0, 800)
       });
     }
 
