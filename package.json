@@ -2,6 +2,9 @@
   "name": "ozon-proxy",
   "version": "1.0.0",
   "main": "server.js",
+  "scripts": {
+    "postinstall": "playwright install chromium"
+  },
   "dependencies": {
     "express": "^4.18.2",
     "playwright": "^1.42.0"
