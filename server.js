@@ -1,15 +1,14 @@
 const express = require('express');
-const axios = require('axios'); // нужен для http-запроса к ScrapingBee
+const axios = require('axios');
 
 const app = express();
 
-const SCRAPINGBEE_API_KEY = 'NY6WX1EBVRHDETAFGI763MC6W8JSFZEO0JSEDMWPJDZAS6YL3DBZRJME7Q25TJK25F77C0A5ZBNSJQR3'; // ← вставь свой ключ
+const SCRAPINGBEE_API_KEY = 'NY6WX1EBVRHDETAFGI763MC6W8JSFZEO0JSEDMWPJDZAS6YL3DBZRJME7Q25TJK25F77C0A5ZBNSJQR3';
 
 app.get('/ozon', async (req, res) => {
   const sku = (req.query.sku || '').replace(/[^\d]/g, '');
   if (!sku) return res.status(400).json({ status: 'error', error: 'Нет SKU' });
 
-  // Собираем URL карточки Ozon
   const ozonUrl = `https://www.ozon.ru/product/${sku}/`;
 
   try {
@@ -18,14 +17,13 @@ app.get('/ozon', async (req, res) => {
         api_key: SCRAPINGBEE_API_KEY,
         url: ozonUrl,
         render_js: 'true',
-        premium_proxy: 'true', // если твой тариф поддерживает
-        country_code: 'ru'     // максимально "нативно" для Ozon
+        premium_proxy: 'true',
+        country_code: 'ru'
       }
     });
 
     const html = beeResp.data;
 
-    // Теперь парсим цену из html
     let price = '';
     let match = html.match(/<span[^>]*?(tsHeadline600Large|tsHeadline500Medium)[^>]*>([\d\s ]+)&thinsp;₽<\/span>/i);
     if (match && match[2]) {
@@ -37,7 +35,8 @@ app.get('/ozon', async (req, res) => {
 
     let stock = (
       html.includes('"isAvailableForBuy":true') ||
-      html.includes('В корзину') || html.includes('Добавить в корзину')
+      html.includes('В корзину') || 
+      html.includes('Добавить в корзину')
     ) ? 'да' : 'нет';
 
     res.json({
@@ -58,4 +57,3 @@ app.get('/', (req, res) => {
 
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => console.log('Server started on', PORT));
-
