@@ -17,9 +17,10 @@ app.get('/ozon', async (req, res) => {
         api_key: SCRAPINGBEE_API_KEY,
         url: ozonUrl,
         render_js: 'true',
-        premium_proxy: 'true',
+        // premium_proxy: 'true',  // ← УДАЛЕНА эта строка
         country_code: 'ru'
-      }
+      },
+      timeout: 60000
     });
 
     const html = beeResp.data;
@@ -47,7 +48,12 @@ app.get('/ozon', async (req, res) => {
       debug: price ? undefined : html.slice(0, 900)
     });
   } catch (error) {
-    res.status(500).json({ status: 'error', error: error.toString() });
+    console.error('ScrapingBee Error:', error.response?.status, error.response?.data);
+    res.status(500).json({ 
+      status: 'error', 
+      error: error.toString(),
+      details: error.response?.data || 'No details'
+    });
   }
 });
 
