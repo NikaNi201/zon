@@ -20,9 +20,10 @@ app.get('/ozon', async (req, res) => {
         api_key: SCRAPINGBEE_API_KEY,
         url: ozonUrl,
         render_js: 'true',
+        stealth_proxy: 'true',      // добавили
         country_code: 'ru'
       },
-      timeout: 60000
+      timeout: 90000
     });
 
     const html = beeResp.data;
@@ -35,7 +36,6 @@ app.get('/ozon', async (req, res) => {
                       html.includes('Antibot');
     
     if (isCaptcha) {
-      // Ищем base64 картинку капчи
       const captchaMatch = html.match(/data:image\/[^;]+;base64,[^"']+/);
       const captchaImage = captchaMatch ? captchaMatch[0] : null;
 
@@ -48,7 +48,7 @@ app.get('/ozon', async (req, res) => {
       });
     }
 
-    // Парсинг цены
+    // Поиск цены
     let price = '';
     let match = html.match(/<span[^>]*?(tsHeadline600Large|tsHeadline500Medium)[^>]*>([\d\s ]+)&thinsp;₽<\/span>/i);
     if (match && match[2]) {
@@ -60,7 +60,7 @@ app.get('/ozon', async (req, res) => {
 
     let stock = (
       html.includes('"isAvailableForBuy":true') ||
-      html.includes('В корзину') || 
+      html.includes('В корзину') ||
       html.includes('Добавить в корзину')
     ) ? 'да' : 'нет';
 
@@ -80,10 +80,3 @@ app.get('/ozon', async (req, res) => {
     });
   }
 });
-
-app.get('/', (req, res) => {
-  res.send('WORKING! Use /ozon?sku=...');
-});
-
-const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log('Server started on', PORT));
