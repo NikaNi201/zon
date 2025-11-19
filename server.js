@@ -4,19 +4,51 @@ const app = express();
 
 app.get('/ozon', async (req, res) => {
   const sku = (req.query.sku || '').replace(/[^\d]/g, '');
-  if (!sku) return res.status(400).send({ error: 'Нет sku' });
+  if (!sku) return res.status(400).json({ status: 'error', error: 'Нет SKU' });
 
   let browser;
   try {
+    // Запуск браузера с флагами обхода детекции
     browser = await chromium.launch({
       headless: true,
-      executablePath: '/root/.cache/ms-playwright/chromium-1194/chrome-linux/chrome' // явный путь
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-blink-features=AutomationControlled',
+        '--disable-dev-shm-usage',
+        '--disable-web-security'
+      ]
     });
-    const page = await browser.newPage();
-    await page.goto('https://www.ozon.ru/product/' + sku + '/', { waitUntil: 'networkidle', timeout: 35000 });
+
+    // Создание контекста с реалистичными параметрами
+    const context = await browser.newContext({
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      viewport: { width: 1920, height: 1080 },
+      locale: 'ru-RU',
+      timezoneId: 'Europe/Moscow',
+      permissions: []
+    });
+
+    const page = await context.newPage();
+
+    // Удаляем признаки автоматизации
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+      window.chrome = { runtime: {} };
+    });
+
+    // Переход на страницу товара
+    await page.goto(`https://www.ozon.ru/product/${sku}/`, {
+      waitUntil: 'domcontentloaded',
+      timeout: 60000
+    });
+
+    // Ждём загрузки основного контента (3 секунды)
+    await page.waitForTimeout(3000);
+
     const html = await page.content();
-    
-    // Парсинг цены и наличия
+
+    // Парсинг цены
     let price = '';
     let match = html.match(/<span[^>]*?(tsHeadline600Large|tsHeadline500Medium)[^>]*>([\d\s ]+)&thinsp;₽<\/span>/i);
     if (match && match[2]) {
@@ -25,20 +57,31 @@ app.get('/ozon', async (req, res) => {
       let m2 = html.match(/<span[^>]*>[\s]*(\d[\d\s ]*)&thinsp;₽<\/span>/i);
       if (m2 && m2[1]) price = m2[1].replace(/[^\d]/g, '');
     }
-    
-    let stock = (html.includes('"isAvailableForBuy":true') || html.includes('В корзину') || html.includes('Добавить в корзину')) ? '✔' : '';
+
+    // Парсинг наличия
+    let stock = (
+      html.includes('"isAvailableForBuy":true') ||
+      html.includes('В корзину') ||
+      html.includes('Добавить в корзину')
+    ) ? '✔' : '';
     let in_stock = stock ? 'да' : 'нет';
     let status = price ? 'ok' : 'Не найдено';
-    
-    res.json({ status: 'ok', price, in_stock, status });
+
+    await browser.close();
+    browser = null;
+
+    res.json({ status: 'ok', sku, price, in_stock, message: status });
   } catch (e) {
-    res.status(500).json({ status: 'err', error: '' + e });
-  } finally {
     if (browser) await browser.close();
+    res.status(500).json({ status: 'error', error: e.message });
   }
 });
 
-app.get('/', (req, res) => res.send('WORKING! Use /ozon?sku=...'));
+app.get('/', (req, res) => {
+  res.send('WORKING! Use /ozon?sku=...');
+});
 
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => { console.log('Started on', PORT); });
+app.listen(PORT, () => {
+  console.log(`Server started on port ${PORT}`);
+});
