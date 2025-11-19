@@ -1,6 +1,6 @@
 FROM node:18-slim
 
-# Базовые зависимости для Chromium (Playwright)
+# Базовые зависимости для Chromium
 RUN apt-get update && apt-get install -y \
     wget \
     ca-certificates \
@@ -20,12 +20,18 @@ RUN apt-get update && apt-get install -y \
     libxrandr2 \
     libgbm1 \
     libpango-1.0-0 \
-    libcairo2
+    libcairo2 \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
+COPY package*.json ./
+RUN npm ci --only=production
+
+# Установить Playwright browsers в /ms-playwright
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+RUN npx playwright install --with-deps chromium
+
 COPY . .
 
-RUN npm install
-RUN npx playwright install chromium
-
+EXPOSE 10000
 CMD [ "node", "server.js" ]
