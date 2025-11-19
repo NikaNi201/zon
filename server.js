@@ -2,6 +2,7 @@ const express = require('express');
 const axios = require('axios');
 
 const app = express();
+app.use(express.json());
 
 const SCRAPINGBEE_API_KEY = 'NY6WX1EBVRHDETAFGI763MC6W8JSFZEO0JSEDMWPJDZAS6YL3DBZRJME7Q25TJK25F77C0A5ZBNSJQR3';
 
@@ -17,7 +18,6 @@ app.get('/ozon', async (req, res) => {
         api_key: SCRAPINGBEE_API_KEY,
         url: ozonUrl,
         render_js: 'true',
-        // premium_proxy: 'true',  // ← УДАЛЕНА эта строка
         country_code: 'ru'
       },
       timeout: 60000
@@ -25,6 +25,29 @@ app.get('/ozon', async (req, res) => {
 
     const html = beeResp.data;
 
+    // Проверка на капчу
+    const isCaptcha = html.includes('captcha') || html.includes('робот') || html.includes('robot') || html.includes('Challenge');
+    
+    if (isCaptcha) {
+      // Ищем base64 картинку капчи
+      const captchaMatch = html.match(/data:image\/[^;]+;base64,[^"']+/);
+      const captchaImage = captchaMatch ? captchaMatch[0] : null;
+
+      // Ищем текстовую капчу (если есть)
+      const captchaTextMatch = html.match(/class="captcha-[^"]*"[^>]*>([^<]+)</i);
+      const captchaText = captchaTextMatch ? captchaTextMatch[1] : null;
+
+      return res.json({
+        status: 'captcha_required',
+        sku,
+        captcha_image: captchaImage,
+        captcha_text: captchaText,
+        message: 'Ozon требует решить капчу',
+        debug: html.slice(0, 600)
+      });
+    }
+
+    // Парсинг цены
     let price = '';
     let match = html.match(/<span[^>]*?(tsHeadline600Large|tsHeadline500Medium)[^>]*>([\d\s ]+)&thinsp;₽<\/span>/i);
     if (match && match[2]) {
@@ -41,11 +64,11 @@ app.get('/ozon', async (req, res) => {
     ) ? 'да' : 'нет';
 
     res.json({
-      status: price ? 'ok' : 'empty',
+      status: price ? 'ok' : 'not_found',
       sku,
       price,
       in_stock: stock,
-      debug: price ? undefined : html.slice(0, 900)
+      message: price ? 'Успешно' : 'Цена не найдена'
     });
   } catch (error) {
     console.error('ScrapingBee Error:', error.response?.status, error.response?.data);
