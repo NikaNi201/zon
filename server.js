@@ -20,7 +20,7 @@ app.get('/ozon', async (req, res) => {
         api_key: SCRAPINGBEE_API_KEY,
         url: ozonUrl,
         render_js: 'true',
-        stealth_proxy: 'true',      // добавили
+        // stealth_proxy: 'true',      // добавили
         country_code: 'ru'
       },
       timeout: 90000
@@ -88,4 +88,5 @@ if (match && match[1]) {
 
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => console.log('Server started on', PORT));
+
 
